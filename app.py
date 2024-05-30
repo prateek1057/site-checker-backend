@@ -148,3 +148,5 @@ def check_load_time():
     load_time = end_time - start_time
     return output
     # return f"Page load time of Website is: {load_time:.3f}"
+if __name__ == '__main__':
+    app.run(debug=True,host='0.0.0.0')
