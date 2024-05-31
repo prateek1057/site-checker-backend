@@ -12,11 +12,9 @@ import numpy as np
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
-def get_links_from_website(url):
-    response = requests.get(url)
+def get_links_from_website(html_code):
     link_list = []
-
-    for link in BeautifulSoup(response.content, 'html.parser', parse_only=SoupStrainer('a')):
+    for link in BeautifulSoup(html_code, 'html.parser', parse_only=SoupStrainer('a')):
         if link.has_attr('href'):
             link_list.append(link['href'])
     return link_list
@@ -36,7 +34,9 @@ def check_url_content(link_list):
             Invalid_Links.append(link)
     return Invalid_Links, No_Content_Links
 
-def get_misspelled_words(text):
+def get_misspelled_words(html_code):
+    soup = BeautifulSoup(html_code, 'html.parser')
+    text = soup.getText()
     spell = SpellChecker()
     skip_words = {'IDC', 'Webinar', 'Microsoft','whitepaper'}
     url_pattern = r'https?://\S+'    
@@ -51,28 +51,11 @@ def get_misspelled_words(text):
             misspelled_words.append(word)
     return misspelled_words
 
-def get_misspelledwords_from_website(url):
-    misspelled_words = []
-    try:
-        response = requests.get(url)
-        if response.status_code == 200: 
-            soup = BeautifulSoup(response.text, 'html.parser')
-            all_text = soup.get_text()
-            misspelled_words = get_misspelled_words(all_text)
-        else:
-            return f"Error: {response.status_code} - Unable to fetch content from {url}"
-    except requests.exceptions.RequestException as e:
-        return f"Error: {e}"
-    if len(misspelled_words):
-        return misspelled_words
-    else:
-        return "No Misspelled word Found"
     
-def get_image_src_links(url):
-    response = requests.get(url)
+def get_image_src_links(html_code):
     src_links = []
 
-    soup = BeautifulSoup(response.content, 'html.parser')
+    soup = BeautifulSoup(html_code, 'html.parser')
     img_tags = soup.find_all('img')
 
     for img in img_tags:
@@ -107,9 +90,9 @@ def is_blurry(image_url, threshold=100):
 @app.route('/check_blurry_images', methods=['POST'])   
 def check_web_images():
     data = request.get_json()
-    url = data['url']
+    html_code = data['code']
     blurry_images=[]
-    image_urls=get_image_src_links(url)
+    image_urls=get_image_src_links(html_code)
     for image_url in image_urls:
         if(is_blurry(image_url,100)):
             blurry_images.append(image_url)
@@ -124,17 +107,20 @@ def check_web_images():
 @app.route('/check_website_links', methods=['POST'])
 def check_website_links():
     data = request.get_json()
-    url_to_check = data['url']
-    links = get_links_from_website(url_to_check)
+    html_code = data['code']
+    links = get_links_from_website(html_code)
     invalid_links, no_content_links = check_url_content(links)
     return jsonify({"Invalid_Links": invalid_links, "No_Content_Links": no_content_links})
 
 @app.route('/get_misspelledwords_from_website', methods=['POST'])
 def get_misspelledwords_from_website_endpoint():
     data = request.get_json()
-    url_to_check = data['url']
-    misspelled_words = get_misspelledwords_from_website(url_to_check)
-    return jsonify({"Misspelled_Words": misspelled_words})
+    html_code = data['code']
+    misspelled_words = get_misspelled_words(html_code)
+    if(len(get_misspelled_words)==0):
+        return jsonify({"Message": "No Misspelled Words Found"})
+    else:
+        return jsonify({"Misspelled_Words": misspelled_words})
 
 @app.route('/check_load_time', methods=['POST'])
 def check_load_time():
