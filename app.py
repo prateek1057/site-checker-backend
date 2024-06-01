@@ -136,7 +136,4 @@ def check_load_time():
     end_time = time()
     stream.close()
     load_time = end_time - start_time
-    return load_time
-    # return f"Page load time of Website is: {load_time:.3f}"
-if __name__ == '__main__':
-    app.run(debug=True,host='0.0.0.0')
+    return jsonify({"Page Load Time is:":load_time})
