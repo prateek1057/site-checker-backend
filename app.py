@@ -72,6 +72,19 @@ def get_image_src_links(html_code):
     return src_links
 
 def is_blurry(image_url, threshold=100):
+    def calculate_laplacian_variance(image):
+        # Apply the Laplacian operator and return the variance
+        return cv2.Laplacian(image, cv2.CV_64F).var()
+    
+    def resize_image(image, size=(500, 500)):
+        # Resize image while maintaining the aspect ratio
+        h, w = image.shape[:2]
+        if h > w:
+            new_h, new_w = size[0], int(size[0] * w / h)
+        else:
+            new_h, new_w = int(size[1] * h / w), size[1]
+        return cv2.resize(image, (new_w, new_h))
+    
     # Download the image using requests
     response = requests.get(image_url)
     
@@ -82,11 +95,15 @@ def is_blurry(image_url, threshold=100):
         # Decode the image array using OpenCV
         image = cv2.imdecode(image_array, cv2.IMREAD_GRAYSCALE)
         
-        # Apply the Laplacian operator
-        laplacian_var = cv2.Laplacian(image, cv2.CV_64F).var()
-        # print(laplacian_var)
-        # If the variance is less than the threshold, the image is considered blurry
-        return laplacian_var < threshold
+        # Resize the image to a standard size for consistency
+        image = resize_image(image)
+        
+        # Calculate the Laplacian variance
+        laplacian_var = calculate_laplacian_variance(image)
+        
+        # Determine if the image is blurry
+        is_blurry = laplacian_var < threshold
+        return is_blurry
     else:
         print("Failed to download the image from the URL")
         return False
