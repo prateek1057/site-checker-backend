@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from spellchecker import SpellChecker
+import enchant
 import requests
 import re
 from bs4 import BeautifulSoup, SoupStrainer
@@ -36,20 +36,24 @@ def check_url_content(link_list):
 
 def get_misspelled_words(html_code):
     soup = BeautifulSoup(html_code, 'html.parser')
-    text = soup.getText()
-    spell = SpellChecker()
-    skip_words = {'IDC', 'Webinar', 'Microsoft','whitepaper'}
-    url_pattern = r'https?://\S+'    
+    text = soup.get_text()
+    skip_words = {'idc', 'webinar', 'microsoft', 'whitepaper'}
+    url_pattern = re.compile(r'https?://\S+')
+    
+    # Initialize the enchant dictionary
+    dictionary = enchant.Dict("en_US")
+    
     words = re.findall(r'\b\w+\b', text)
-    misspelled_words = []
+    misspelled_words = set()
+    
     for word in words:
-        if word in skip_words:
+        lower_word = word.lower()
+        if lower_word in skip_words or url_pattern.match(word):
             continue
-        if re.match(url_pattern, word):
-            continue
-        if word.lower() not in spell and word.lower() not in skip_words:
-            misspelled_words.append(word)
-    return misspelled_words
+        if not dictionary.check(lower_word):
+            misspelled_words.add(word)
+    
+    return list(misspelled_words)
 
     
 def get_image_src_links(html_code):
