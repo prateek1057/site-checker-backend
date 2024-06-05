@@ -8,7 +8,7 @@ import urllib.request
 from time import time
 import cv2
 import numpy as np
-# from collections import defaultdict
+from collections import defaultdict
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
