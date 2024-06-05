@@ -1,5 +1,4 @@
 from flask import Flask, jsonify, request
-import enchant
 import requests
 import re
 from bs4 import BeautifulSoup, SoupStrainer
@@ -9,6 +8,7 @@ from time import time
 import cv2
 import numpy as np
 from collections import defaultdict
+from spellchecker import SpellChecker
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
@@ -46,23 +46,19 @@ def get_misspelled_words(html_code):
     text = soup.get_text()
     skip_words = {'idc', 'webinar', 'microsoft', 'whitepaper'}
     url_pattern = re.compile(r'https?://\S+')
-    
-    # Initialize the enchant dictionary
-    dictionary = enchant.Dict("en_US")
-    
+    spell=SpellChecker()
     words = re.findall(r'\b\w+\b', text)
     all_words=[]
     correctly_spelled_words=[]
     correctly_spelled_words_count = defaultdict(int)
     misspelled_words_count= defaultdict(int)
-    
     for word in words:
         lower_word = word.lower()
-        if lower_word in skip_words or url_pattern.match(word):
+        if lower_word in skip_words or url_pattern.search(word):
             continue
         all_words.append(word)
 
-        if dictionary.check(lower_word):
+        if spell.correction(word).lower()==lower_word:
             correctly_spelled_words_count[word] += 1
         else:
             misspelled_words_count[word] += 1
@@ -70,7 +66,17 @@ def get_misspelled_words(html_code):
     misspelled_words = list(misspelled_words_count.items())
     correctly_spelled_words=list(correctly_spelled_words_count.items())
     return all_words, correctly_spelled_words, misspelled_words
-  
+
+
+def get_correct_words(misspelled_words):
+    spell=SpellChecker()
+    misspelled_words=[]
+    for word_feq in misspelled_words:
+        word=word_feq[0]
+        correct_word=spell.correction(word)
+        list.append((word,word_feq[1],correct_word))
+    return  misspelled_words
+
 def get_image_src_links(html_code):
     src_links = []
 
@@ -154,6 +160,7 @@ def get_misspelledwords_from_website_endpoint():
     data = request.get_json()
     html_code = data['code']
     all_words,correct_words_with_feq,misspelled_words_with_feq = get_misspelled_words(html_code)
+    misspelled_words_with_feq=get_correct_words(misspelled_words_with_feq)
     return jsonify({"Misspelled_Words": misspelled_words_with_feq, "All Words": all_words, "Correctly Spelled Words":correct_words_with_feq})
 
 @app.route('/check_load_time', methods=['POST'])
