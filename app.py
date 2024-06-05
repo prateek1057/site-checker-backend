@@ -8,7 +8,7 @@ import urllib.request
 from time import time
 import cv2
 import numpy as np
-
+# from collections import defaultdict
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
@@ -51,18 +51,26 @@ def get_misspelled_words(html_code):
     dictionary = enchant.Dict("en_US")
     
     words = re.findall(r'\b\w+\b', text)
-    misspelled_words = set()
+    all_words=[]
+    correctly_spelled_words=[]
+    correctly_spelled_words_count = defaultdict(int)
+    misspelled_words_count= defaultdict(int)
     
     for word in words:
         lower_word = word.lower()
         if lower_word in skip_words or url_pattern.match(word):
             continue
-        if not dictionary.check(lower_word):
-            misspelled_words.add(word)
-    
-    return list(misspelled_words)
+        all_words.append(word)
 
+        if dictionary.check(lower_word):
+            correctly_spelled_words_count[word] += 1
+        else:
+            misspelled_words_count[word] += 1
     
+    misspelled_words = list(misspelled_words_count.items())
+    correctly_spelled_words=list(correctly_spelled_words_count.items())
+    return all_words, correctly_spelled_words, misspelled_words
+  
 def get_image_src_links(html_code):
     src_links = []
 
@@ -145,11 +153,8 @@ def check_website_links():
 def get_misspelledwords_from_website_endpoint():
     data = request.get_json()
     html_code = data['code']
-    misspelled_words = get_misspelled_words(html_code)
-    if(len(get_misspelled_words)==0):
-        return jsonify({"Message": "No Misspelled Words Found"})
-    else:
-        return jsonify({"Misspelled_Words": misspelled_words})
+    all_words,correct_words_with_feq,misspelled_words_with_feq = get_misspelled_words(html_code)
+    return jsonify({"Misspelled_Words": misspelled_words_with_feq, "All Words": all_words, "Correctly Spelled Words":correct_words_with_feq})
 
 @app.route('/check_load_time', methods=['POST'])
 def check_load_time():
