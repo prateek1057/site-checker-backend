@@ -16,23 +16,30 @@ def get_links_from_website(html_code):
     link_list = []
     for link in BeautifulSoup(html_code, 'html.parser', parse_only=SoupStrainer('a')):
         if link.has_attr('href'):
-            link_list.append(link['href'])
+            link_text = link.text.strip()  # Get the text of the link
+            if link_text:
+                link_list.append((link['href'], link_text))
     return link_list
 
 def check_url_content(link_list):
     No_Content_Links = []
     Invalid_Links = []
+    Valid_Links=[]
     for link in link_list:
         try:
-            response = requests.get(link)
+            response = requests.get(link[0])
+            link_with_status=(link[0],link[1],response.status_code)
             if response.status_code == 200:  
                 if not response.text:
-                    No_Content_Links.append(link)  
+                    No_Content_Links.append(link_with_status)
+                else:
+                    Valid_Links.append(link_with_status)
             else:
-                Invalid_Links.append(link)  
+                Invalid_Links.append(link_with_status)  
         except requests.exceptions.RequestException as e:
-            Invalid_Links.append(link)
-    return Invalid_Links, No_Content_Links
+            link_with_status = (link[0], link[1], str(e))
+            Invalid_Links.append(link_with_status)
+    return Invalid_Links, No_Content_Links,Valid_Links
 
 def get_misspelled_words(html_code):
     soup = BeautifulSoup(html_code, 'html.parser')
@@ -130,8 +137,9 @@ def check_website_links():
     data = request.get_json()
     html_code = data['code']
     links = get_links_from_website(html_code)
-    invalid_links, no_content_links = check_url_content(links)
-    return jsonify({"Invalid_Links": invalid_links, "No_Content_Links": no_content_links})
+    invalid_links, no_content_links,valid_links= check_url_content(links)
+    return jsonify({"Invalid_Links": invalid_links, "No_Content_Links": no_content_links,"Valid Links":valid_links,"Count of Valid Links":len(valid_links),
+                    "Count of Invalid Links":len(invalid_links),"Count of Links with no content:":len(no_content_links)})
 
 @app.route('/get_misspelledwords_from_website', methods=['POST'])
 def get_misspelledwords_from_website_endpoint():
