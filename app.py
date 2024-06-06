@@ -128,6 +128,29 @@ def is_blurry(image_url, threshold=100):
     else:
         print("Failed to download the image from the URL")
         return False
+    
+def validate_html_w3c(html_code):
+    headers = {
+        "Content-Type": "text/html; charset=utf-8"
+    }
+    params = {
+        "out": "json"
+    }
+    response = requests.post("https://validator.w3.org/nu/?out=json", headers=headers, data=html_code, params=params)
+    validation_results = response.json()
+
+    messages = validation_results.get('messages', [])
+    errors=[]
+    warnings=[]
+    for message in messages:
+        message_type = message.get('type', 'error')  # Default to 'error' if type is not provided
+        if message_type == 'error':
+            errors.append((f"Line:{message["lastLine"]}",message['message']))
+            
+        elif message_type == 'info' and 'subtype' in message and message['subtype'] == 'warning':
+            warnings.append((f"Line: {message["lastLine"]}",message['message']))
+    
+    return errors,warnings
 
 @app.route('/check_blurry_images', methods=['POST'])   
 def check_web_images():
@@ -174,3 +197,10 @@ def check_load_time():
     stream.close()
     load_time = end_time - start_time
     return jsonify({"Page Load Time is:":load_time})
+
+@app.route('/check_html_errors', methods=['POST'])
+def check_htnl_code_errors():
+    data = request.get_json()
+    html_code = data['code']
+    errors,warnings = validate_html_w3c(html_code)
+    return jsonify({"Errors": errors, "Warnings": warnings})
