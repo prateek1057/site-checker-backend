@@ -8,7 +8,7 @@ from time import time
 import cv2
 import numpy as np
 from collections import defaultdict
-from spellchecker import SpellChecker
+from textblob import TextBlob
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
@@ -46,7 +46,6 @@ def get_misspelled_words(html_code):
     text = soup.get_text()
     skip_words = {'idc', 'webinar', 'microsoft', 'whitepaper'}
     url_pattern = re.compile(r'https?://\S+')
-    spell=SpellChecker()
     words = re.findall(r'\b\w+\b', text)
     all_words=[]
     correctly_spelled_words=[]
@@ -54,11 +53,12 @@ def get_misspelled_words(html_code):
     misspelled_words_count= defaultdict(int)
     for word in words:
         lower_word = word.lower()
+        word_blob=TextBlob(lower_word)
         if lower_word in skip_words or url_pattern.search(word):
             continue
         all_words.append(word)
 
-        if spell.correction(word).lower()==lower_word:
+        if str(word_blob.correct()).lower()==lower_word:
             correctly_spelled_words_count[word] += 1
         else:
             misspelled_words_count[word] += 1
@@ -69,13 +69,13 @@ def get_misspelled_words(html_code):
 
 
 def get_correct_words(misspelled_words):
-    spell=SpellChecker()
-    misspelled_words=[]
+    misspelled_words_list=[]
     for word_feq in misspelled_words:
         word=word_feq[0]
-        correct_word=spell.correction(word)
-        list.append((word,word_feq[1],correct_word))
-    return  misspelled_words
+        word_blob=TextBlob(word)
+        correct_word=word_blob.correct()
+        misspelled_words_list.append((word,word_feq[1],str(correct_word)))
+    return misspelled_words_list
 
 def get_image_src_links(html_code):
     src_links = []
