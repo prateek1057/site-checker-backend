@@ -145,10 +145,10 @@ def validate_html_w3c(html_code):
     for message in messages:
         message_type = message.get('type', 'error')  # Default to 'error' if type is not provided
         if message_type == 'error':
-            errors.append((f"Line:{message["lastLine"]}",message['message']))
+            errors.append((message["lastLine"],message['message']))
             
         elif message_type == 'info' and 'subtype' in message and message['subtype'] == 'warning':
-            warnings.append((f"Line: {message["lastLine"]}",message['message']))
+            warnings.append((message["lastLine"],message['message']))
     
     return errors,warnings
 
