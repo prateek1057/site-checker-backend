@@ -220,3 +220,6 @@ def check_htnl_code_errors():
     html_code = data['code']
     errors,warnings = validate_html_w3c(html_code)
     return jsonify({"Errors": errors, "Warnings": warnings})
+
+if __name__ == '__main__':
+    app.run(debug=False,host='0.0.0.0')
