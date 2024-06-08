@@ -42,40 +42,38 @@ def check_url_content(link_list):
     return Invalid_Links, No_Content_Links,Valid_Links
 
 def get_misspelled_words(html_code):
+    # Parse HTML and extract text
     soup = BeautifulSoup(html_code, 'html.parser')
     text = soup.get_text()
+    # Set of words to skip
     skip_words = {'idc', 'webinar', 'microsoft', 'whitepaper'}
+    # Regex pattern to match URLs
     url_pattern = re.compile(r'https?://\S+')
+    # Find all words in the text
     words = re.findall(r'\b\w+\b', text)
-    all_words=[]
-    correctly_spelled_words=[]
-    correctly_spelled_words_count = defaultdict(int)
-    misspelled_words_count= defaultdict(int)
+    all_words_count=0
+    correct_words_count=0
+    # all_words = []
+    # correctly_spelled_words_count = defaultdict(int)
+    misspelled_words_count = defaultdict(int)
+    misspelled_word_with_correct_word=[]
     for word in words:
         lower_word = word.lower()
-        word_blob=TextBlob(lower_word)
+        # Skip the word if it is in the skip list or if it matches the URL pattern
         if lower_word in skip_words or url_pattern.search(word):
-            continue
-        all_words.append(word)
-
-        if str(word_blob.correct()).lower()==lower_word:
-            correctly_spelled_words_count[word] += 1
+                continue
+        all_words_count+=1
+            # Check if the word is misspelled using TextBlob
+        word_blob = TextBlob(lower_word)
+        corrected_word = str(word_blob.correct())
+        if corrected_word.lower() == lower_word:
+            correct_words_count+=1
         else:
+            misspelled_word_with_correct_word.append((lower_word,corrected_word))
             misspelled_words_count[word] += 1
-    
+    # correctly_spelled_words = list(correctly_spelled_words_count.items())
     misspelled_words = list(misspelled_words_count.items())
-    correctly_spelled_words=list(correctly_spelled_words_count.items())
-    return all_words, correctly_spelled_words, misspelled_words
-
-
-def get_correct_words(misspelled_words):
-    misspelled_words_list=[]
-    for word_feq in misspelled_words:
-        word=word_feq[0]
-        word_blob=TextBlob(word)
-        correct_word=word_blob.correct()
-        misspelled_words_list.append((word,word_feq[1],str(correct_word)))
-    return misspelled_words_list
+    return all_words_count,correct_words_count,misspelled_words,misspelled_word_with_correct_word
 
 def get_image_src_links(html_code):
     src_links = []
@@ -182,9 +180,8 @@ def check_website_links():
 def get_misspelledwords_from_website_endpoint():
     data = request.get_json()
     html_code = data['code']
-    all_words,correct_words_with_feq,misspelled_words_with_feq = get_misspelled_words(html_code)
-    misspelled_words_with_feq=get_correct_words(misspelled_words_with_feq)
-    return jsonify({"Misspelled_Words": misspelled_words_with_feq, "All Words": all_words, "Correctly Spelled Words":correct_words_with_feq})
+    all_words_count,correct_words_count,misspelled_words,misspelled_word_with_correct_word = get_misspelled_words(html_code)
+    return jsonify({"Misspelled_Words": misspelled_words, "All Words Count": all_words_count, "Correctly Spelled Words Count":correct_words_count,"Misspelled Words with Correct Words":misspelled_word_with_correct_word})
 
 @app.route('/check_load_time', methods=['POST'])
 def check_load_time():
