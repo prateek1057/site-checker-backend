@@ -8,7 +8,6 @@ from time import time
 import cv2
 import numpy as np
 from collections import defaultdict
-# from textblob import TextBlob
 from spellchecker import SpellChecker
 from urllib.parse import urlparse, urlunparse
 app = Flask(__name__)
