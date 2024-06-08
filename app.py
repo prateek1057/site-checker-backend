@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 from collections import defaultdict
 from textblob import TextBlob
+from urllib.parse import urlparse, urlunparse
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
@@ -150,18 +151,29 @@ def validate_html_w3c(html_code):
     
     return errors,warnings
 
+def get_partial_url(full_url):
+    # Parse the full URL
+    parsed_url = urlparse(full_url)
+    # Extract the scheme and netloc (base URL)
+    base_url = urlunparse((parsed_url.scheme, parsed_url.netloc, '', '', '', ''))
+    return base_url
+
 @app.route('/check_blurry_images', methods=['POST'])   
 def check_web_images():
     data = request.get_json()
     html_code = data['code']
+    url=data['url']
     blurry_images=[]
     image_urls=get_image_src_links(html_code)
     for image_url in image_urls:
-        if(is_blurry(image_url,100)):
-            blurry_images.append(image_url)
+        if image_url.startswith("https://"):
+            if(is_blurry(image_url,100)):
+                blurry_images.append(image_url)
         else:
-            print("Image is not blurry")
-
+            partial_url=get_partial_url(url)
+            full_image_url=partial_url+image_url
+            if(is_blurry(full_image_url,100)):
+                blurry_images.append(full_image_url)
     if len(blurry_images)==0:
         return jsonify({"Message":"No Blurry Image Found"})
     else:
